@@ -1,0 +1,7 @@
+./renranapi/idea
+./renranapi/idea/*
+./renranapi/db.sqlite3
+./renran_pc/node_modules
+./renran_pc/node_modules/*
+./git
+*/__pycache__/*

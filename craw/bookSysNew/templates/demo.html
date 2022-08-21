@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+
+<div class="outer">
+    <span    id="i1">HI</span>
+</div>
+<hr>
+<button id="btn">Go</button>
+<button id="del">DEL</button>
+
+<script>
+   var ele= document.getElementById("btn");
+   var del= document.getElementById("del");
+   var hi= document.getElementById("i1");
+   var outer=document.getElementsByClassName("outer")[0];
+
+   ele.onclick=function () {
+      // 创建img标签
+       var img=document.createElement("img");  // <img src="">
+       img.src="http://hbimg.b0.upaiyun.com/ef6043c0f407dac052c3b53b533274e30feb8b3e810f-dzocHu_fw658" // <img src="http://hbimg.b0.upaiyun.com/ef6043c0f407dac052c3b53b533274e30feb8b3e810f-dzocHu_fw658">
+       // 父标签.appendChild(子标签)
+       outer.appendChild(img)
+   };
+
+
+   del.onclick=function () {
+        // 父标签.removeChild(删除字标签)
+       outer.removeChild(hi);
+
+   }
+
+
+
+
+</script>
+
+</body>
+</html>

@@ -1,5 +1,6 @@
 from django.test import TestCase
 
+
 # Create your tests here.
 
 
@@ -14,9 +15,8 @@ def zhuang(func):
         print(111)
         func(res)
         print(222)
+
     return newfunc
-
-
 
 
 @zhuang
@@ -25,12 +25,3 @@ def func(res):
 
 
 func(55)
-
-
-
-
-
-
-
-
-

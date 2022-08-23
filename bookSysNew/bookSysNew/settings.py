@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/3.0/ref/settings/
 """
 
 import os
+from django.contrib.sessions.middleware import SessionMiddleware
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -51,8 +52,6 @@ MIDDLEWARE = [
     "book.utils.MyMiddleWares.M2",
     "book.utils.MyMiddleWares.LoginAuthMiddleware"
 ]
-
-from django.contrib.sessions.middleware import SessionMiddleware
 
 ROOT_URLCONF = 'bookSysNew.urls'
 

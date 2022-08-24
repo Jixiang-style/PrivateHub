@@ -1,3 +1,5 @@
+import json
+from django.http import JsonResponse
 from django.shortcuts import render, HttpResponse, redirect
 
 # Create your views here.
@@ -109,7 +111,6 @@ def editBooks(request, pk):
 def get_publishes(request):
     data = list(Publish.objects.all().values("name", "email"))
     print("data", data)
-    import json
     return HttpResponse(json.dumps(data, ensure_ascii=False))
 
 
@@ -120,7 +121,6 @@ def ajax_del(request):
         Book.objects.filter(id=pk).delete()
     except Exception as e:
         res["flag"] = False
-    import json
     return HttpResponse(json.dumps(res))
 
 
@@ -128,10 +128,8 @@ def cal_add(request):
     num1 = request.POST.get("num1")  # "1"
     num2 = request.POST.get("num2")  # "2"
     print(num1, num2)
-    ret = int(num1) + int(num2)
+    ret = float(num1) + float(num2)
     res = {"ret": ret}
-
-    from django.http import JsonResponse
     return JsonResponse(res)
 
 
@@ -191,8 +189,8 @@ def login_auth(request):
         return render(request, "login.html")
     else:
         # 取数据判断用户是否登录
-        name = request.POST.get("user")
-        pwd = request.POST.get("pwd")
+        name = request.POST.get("username")
+        pwd = request.POST.get("password")
         user = auth.authenticate(username=name, password=pwd)
         if user:
             print("查询信息成功")

@@ -7,14 +7,14 @@
     <link rel="stylesheet" href="../static/bootstrap/css/bootstrap.css">
 </head>
 <body>
-<h3>当前登录用户:{{ request.user.username|default:"匿名用户" }}</h3>
-<h3>查询书籍</h3>
-<a href="/logout/">注销</a>
+<a>当前登录用户:{{ request.user.username|default:"匿名用户" }} |</a>
+<a href="/logout/">注销 |</a>
 <a href="/logout_auth/">注销(logout_auth)</a>
 <div class="container">
     <div class="row">
         <div class="col-md-8 col-md-offset-2">
             <a href="/book/add/" class="btn btn-primary">添加书籍</a>
+            <a class="btn btn-primary" style="float: right">查询书籍</a>
              <table class="table table-striped table-hover">
                  <thead>
                       <tr>
@@ -58,13 +58,9 @@
 </div>
 <hr>
 <button id="i1">Go!</button>
-
 <div class="content"></div>
-
 <hr>
-<input type="text" id="i1_1">+ <input type="text" id="i2">=<input type="text" id="i3"><button class="cal">计算</button>
-
-
+{#<input type="text" id="i1_1">+ <input type="text" id="i2">=<input type="text" id="i3"><button class="cal">计算</button>#}
 <script src="https://cdn.bootcss.com/jquery/3.4.1/jquery.js"></script>
 <script>
 
@@ -120,10 +116,8 @@
     })
 
     // 计算事件
-
-    $(".cal").click(function () {
-
-
+    <!--
+    $(".cal").click(function (event) {
         $.ajax({
             url:"/cal_add/",
             type: "post",
@@ -135,10 +129,9 @@
                   var res=res["ret"];
                   $("#i3").val(res);
             }
-
         })
     })
+    -->
 </script>
-
 </body>
 </html>

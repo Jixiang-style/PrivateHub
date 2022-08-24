@@ -137,13 +137,15 @@ def cal_add(request):
 
 def login(request):
     if request.method == "GET":
+        print("get方法")
         return render(request, "login.html")
     else:
         # 取数据判断用户是否登录
-        name = request.POST.get("user")
-        pwd = request.POST.get("pwd")
+        name = request.POST.get("username")
+        pwd = request.POST.get("password")
         user = User.objects.filter(name=name, pwd=pwd).first()
         if user:
+            print("后端查询信息成功")
             # 登录成功
             # res_obj=HttpResponse("登录成功!")
             # res_obj=redirect("/")
@@ -179,11 +181,13 @@ def logout(request):
     return redirect("/login/")
 
 
-######################################### 用户认证组件
-
+###################
+# 用户认证组件
+###################
 
 def login_auth(request):
     if request.method == "GET":
+        print("此处是get方法")
         return render(request, "login.html")
     else:
         # 取数据判断用户是否登录
@@ -191,11 +195,13 @@ def login_auth(request):
         pwd = request.POST.get("pwd")
         user = auth.authenticate(username=name, password=pwd)
         if user:
+            print("查询信息成功")
             # request.session["user_id"]=user.id
             auth.login(request, user)
             return redirect('/books/')
         else:
             err_msg = "用户名或者密码错误"
+            print(err_msg)
             return render(request, "login.html", {"err_msg": err_msg})
 
 

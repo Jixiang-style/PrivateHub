@@ -7,4 +7,6 @@ RUN pip install --no-cache-dir django -i https://pypi.douban.com/simple
 
 COPY . .
 
-CMD [ "python", "./manage.py","runserver"]
+CMD [ "python", "./manage.py","runserver","0.0.0.0:6399"]
+
+

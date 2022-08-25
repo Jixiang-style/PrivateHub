@@ -1,4 +1,6 @@
 import json
+import time
+
 from django.http import JsonResponse
 from django.shortcuts import render, HttpResponse, redirect
 
@@ -143,7 +145,8 @@ def login(request):
         pwd = request.POST.get("password")
         user = User.objects.filter(name=name, pwd=pwd).first()
         if user:
-            print("后端查询信息成功")
+            msg = '登录成功，欢迎 %s！' % name
+            print(msg)
             # 登录成功
             # res_obj=HttpResponse("登录成功!")
             # res_obj=redirect("/")
@@ -162,7 +165,6 @@ def login(request):
                 1234asd234cvsxz234      {"is_login":"true","username":"alex"}
             3 res.set_cookie("sessionid","1234asd234cvsxz234")                    
             '''
-
             return redirect('/books/')
         else:
             err_msg = "用户名或者密码错误"
@@ -185,15 +187,15 @@ def logout(request):
 
 def login_auth(request):
     if request.method == "GET":
-        print("此处是get方法")
         return render(request, "login.html")
     else:
-        # 取数据判断用户是否登录
+        # 取数据判断用户是否登录(默认：alex/123 )
         name = request.POST.get("username")
         pwd = request.POST.get("password")
         user = auth.authenticate(username=name, password=pwd)
         if user:
-            print("查询信息成功")
+            msg = '登录成功，欢迎 %s！' % name
+            print(msg)
             # request.session["user_id"]=user.id
             auth.login(request, user)
             return redirect('/books/')

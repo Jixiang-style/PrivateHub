@@ -23,5 +23,5 @@ $(document).ready(function (msg) {
         $("#username").val("");
         $("#password").val("");
 });
-    $(".login-status").delay(2000).fadeOut()
+    $(".login-status").delay(2000).fadeOut();
 });

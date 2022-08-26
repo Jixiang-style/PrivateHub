@@ -21,6 +21,22 @@ def zhuang(func):
     return newfunc
 
 
+# todo 待完善
+def findBook(request, title=None):
+    """
+    查询书籍
+    :param request:
+    :type request:
+    :return:
+    :rtype:
+    """
+    title = request.POST.get("title")
+    if len(title) > 32:
+        msg = "书名不合法！！"
+        print(msg)
+    pass
+
+
 def addBook(request):
     if request.method == "GET":
 
@@ -133,6 +149,17 @@ def cal_add(request):
     ret = float(num1) + float(num2)
     res = {"ret": ret}
     return JsonResponse(res)
+
+
+def register(request):
+    """
+    注册（admin站点注册）
+    :param request:
+    :type request:
+    :return:
+    :rtype:
+    """
+    return redirect("/admin/")
 
 
 def login(request):

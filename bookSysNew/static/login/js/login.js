@@ -1,4 +1,4 @@
-$(document).ready(function () {
+$(document).ready(function (msg) {
     $("#login").click(function (event) {
         var name = $("#username").val();
         var pwd = $("#password").val();
@@ -22,6 +22,6 @@ $(document).ready(function () {
     $("#reset").click(function (event) {
         $("#username").val("");
         $("#password").val("");
-
 });
+    $(".login-status").delay(2000).fadeOut();
 });

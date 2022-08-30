@@ -24,7 +24,11 @@ urlpatterns = [
     path('login/', views.login),
     path('login_auth/', views.login_auth),
     path('logout_auth/', views.logout_auth),
+    path('logout/', views.logout),
     path('book/add/', views.addBook),
+    path('register/', views.register),
+    # 查询书记
+    path('find/', views.findBook),
     path('', views.books),
     path('books/', views.books),
     re_path('book/delete/(\d+)', views.deleteBooks),

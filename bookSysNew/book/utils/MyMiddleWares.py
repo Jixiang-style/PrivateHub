@@ -39,9 +39,10 @@ class M2(MiddlewareMixin):
 
 class LoginAuthMiddleware(MiddlewareMixin):
     def process_request(self, request):
-
-        if request.path in ["/login_auth/", "/reg/", "/books/", "/"]:
+        print("访问路径", request.path)
+        if request.path in ["/login_auth/", "/find/", "/books/", "/", "/register/", "/admin/"]:
             return None
 
         if not request.user.id:
+            print("验证userid")
             return redirect("/login_auth/")

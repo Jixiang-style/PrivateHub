@@ -28,7 +28,7 @@ urlpatterns = [
     path('book/add/', views.addBook),
     path('register/', views.register),
     # 查询书记
-    path('find/(*)', views.findBook),
+    path('find/', views.findBook),
     path('', views.books),
     path('books/', views.books),
     re_path('book/delete/(\d+)', views.deleteBooks),

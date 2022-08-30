@@ -1,6 +1,7 @@
 import json
 import time
 
+from django.core.paginator import Paginator
 from django.http import JsonResponse
 from django.shortcuts import render, HttpResponse, redirect
 
@@ -22,19 +23,24 @@ def zhuang(func):
 
 
 # todo 待完善
-def findBook(request, title=None):
+def findBook(request):
     """
     查询书籍
+
     :param request:
     :type request:
     :return:
     :rtype:
     """
-    title = request.POST.get("title")
-    if len(title) > 32:
+    title = request.POST.get("keyword")
+    print("搜索内容:", title)
+    if len(title) > 32 or len(title) < 1:
         msg = "书名不合法！！"
         print(msg)
-    pass
+        return render(request, "books.html", locals())
+    book_list = Book.objects.filter(title__regex="{}.*".format(title)).all()
+    print(book_list.values())
+    return render(request, "findbooks.html", locals())
 
 
 def addBook(request):
@@ -92,7 +98,23 @@ def books(request):
     # else:
     # import time
     # time.sleep(20)
-    book_list = Book.objects.all()
+    books = Book.objects.all()  # 分页数据
+    current_page = int(request.GET.get("page", 1))
+    paginator = Paginator(books, 5)
+    if paginator.num_pages < 11:
+        # 分页数小于11
+        page_range = paginator.page_range
+    else:
+        if current_page - 5 <= 0:
+            page_range = range(1, 12)
+        elif current_page + 5 > paginator.num_pages:
+            page_range = range(paginator.num_pages - 10, paginator.num_pages + 1)
+        else:
+            page_range = range(current_page - 5, current_page + 6)
+
+    page = paginator.get_page(current_page)
+    book_list = page
+    # book_list = Book.objects.all()
     # username=request.COOKIES.get("username")
     # username=request.session.get("username")
     # username=request.user.username
@@ -159,7 +181,10 @@ def register(request):
     :return:
     :rtype:
     """
-    return redirect("/admin/")
+    if request.method == "GET":
+        print("register")
+        request.session.cycle_key()
+        return redirect("/admin/")
 
 
 def login(request):

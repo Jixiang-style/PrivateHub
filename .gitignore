@@ -1,4 +1,4 @@
 # 忽略所有文件夹下.idea文件夹
 */.idea
 # 忽略__pycache__文件夹
-*/__pycache__
+*/**/__pycache__/

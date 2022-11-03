@@ -21,7 +21,6 @@ from io import BytesIO
 import aiohttp
 import asyncio
 
-from PIL import Image
 from tqdm import tqdm
 import jsonpath
 import m3u8
@@ -32,15 +31,15 @@ import seldom
 # 消除警告信息
 import urllib3
 import uvloop
-from aiohttp import ClientSession, ClientRequest
+from aiohttp import ClientSession
 from urllib.parse import unquote
+from utils.timer import Timer
+from utils.log import logging
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 urllib3.disable_warnings()
 
 sys.path.append(os.path.abspath(os.path.join(os.getcwd())).split('simple')[0])
-from utils.timer import Timer
-from utils.log import logging
 
 # 定义请求头
 headers = {
@@ -370,7 +369,7 @@ class FindNewWorld:
                 # ensure_ascii=False设置防止中文乱码
                 json.dump(old_data, fp2, ensure_ascii=False)
 
-        _handle_log()
+        # _handle_log()
 
         # 拉丁文转换为utf-8
         def _latin2utf8(strings):
@@ -501,9 +500,11 @@ class FindNewWorld:
                 logging.error(f"获取key:{key}视频内容信息失败!")
                 print(f"获取key: {key}视频内容信息失败!")
 
+        key_list = _get_keys()
+
         # 异步获取单个key获取的m3u8信息 (todo 待优化)
         async def _get_m3u8_info_async(key):
-            time_out = aiohttp.ClientTimeout(total=120)
+            time_out = aiohttp.ClientTimeout(total=240)
             async with ClientSession(headers=header_single, timeout=time_out) as session:
                 async with session.get(url=base_url + key, headers=header_single, timeout=time_out) as response:
                     status_code = response.status
@@ -532,7 +533,6 @@ class FindNewWorld:
                             # im = Image.open(BytesIO(requests.get(url=title_png_url).content))
                             if im:
                                 tittle = pytesseract.image_to_string(im, lang='chi_sim+eng')
-
                         # 匹配中文
                         tittle = re.findall(r'[\u4e00-\u9fa5]+', tittle)
                         if isinstance(tittle, list):
@@ -540,7 +540,7 @@ class FindNewWorld:
 
                         # 获取视频内容
                         str_encode = re.findall(r'strencode2\(\"(.*?)\"\)', str(response))
-                        m3u8_base_url = ""
+                        # m3u8_base_url = ""
                         if len(str_encode) >= 1:
                             logging.info(f"m3u8地址为{unquote(str_encode[0])}")
                             print(f"key为{key}对应的m3u8地址为{unquote(str_encode[0])}")
@@ -556,6 +556,16 @@ class FindNewWorld:
                     else:
                         logging.error(f"获取key:{key}视频内容信息失败!")
                         print(f"获取key: {key}视频内容信息失败!")
+
+        # todo 待调试
+        async def main_m3u8(key_list):
+            return await asyncio.gather(*[_get_m3u8_info_async(key) for key in key_list])
+
+        # loop = asyncio.get_event_loop()
+        #
+        # m3u8_list = loop.run_until_complete(main_m3u8(key_list))
+        # m3u8_list = _get_m3u8_urls_async(key_list)
+        # print(m3u8_list)
 
         # 获取视频信息
         def _get_video_info(key):
@@ -668,65 +678,44 @@ class FindNewWorld:
                 logging.info(f"视频{video_name}已存在已下载完成！！！")
                 print(f"视频{video_name}已存在已下载完成！！！")
 
-        # 设置视频序号
-        # # todo 剩余未能成功获取的m3u8地址原因未找到
-        # # retry_key_list = [list(i.values()).pop() for i in m3u8_infos[1]]
-        # # 通过视频对应的key下载指定视频
-        # # for key in retry_key_list:
-        # #     # 获取m3u8信息
-        # #     m3u8_info = _get_m3u8_info(key)
-        # #
-        # #     # 根据key获取视频信息
-        # #     # title, img_url = _get_video_info(key)
-        # #     #
-        # #     # # 获取m3u8地址
-        # #     # m3u8_url = _get_m3u8_url(key)
-        # #     # for k, v in m3u8_infos[0]:
-        # #     #     if v == "":
-        # #     #         retry_keys.append(m3u8_info["key"])
-        # #     # video_info.append({m3u8_info})
-        # #     # 方法一（不稳定）
-        # #     # 开始下载
-        # #     # logging.info(f"准备下载第{video_index}个视频\n 视频加密地址为{m3u8_info.values()}")
-        # #     # _download(m3u8_url, title)
-        # #     print(m3u8_info)
-        # #     video_index += 1
-        # print(video_info)
-        # # todo 将m3u8新纪录写进json文件
-        # for item in video_info:
-        #     if len(list(item.values())) < 1:
-        #         video_info.remove(item)
-
-        # 处理当天最新逻辑
-        # 1.获取key列表
-        key_list = _get_keys()
-
         # 2.获取m3u8信息列表
-        # m3u8_list = list()
-        # todo 待调试
-        # async def m3u8_main(key_list):
-        #     return await asyncio.gather(*[_get_m3u8_info_async(key) for key in key_list])
-        #
-        # loop = asyncio.get_event_loop()
-        # loop.run_until_complete(m3u8_main(key_list))
-        # m3u8_list = _get_m3u8_urls_async(key_list)
         # 2.1 普通方法获取
-        m3u8_list = list()
-        for i in key_list:
-            j = _get_m3u8_info(i)
-            m3u8_list.append(j)
+        m3u8_list = [_get_m3u8_info(i) for i in key_list]
         print("m3u8_list", m3u8_list)
         m3u8_list = [i for i in m3u8_list if i is not None and list(i.values())[0][0] != ""]
         print("一共获取到%d个地址" % len(m3u8_list))
         # 3 获取ts文件
         # 3.1 创建当日文件夹（文件名为当前日期）
         dir_name = time.strftime("%Y-%m-%d", time.localtime())
+        # 3.2 检查主文件夹下是否存在当前名称（日期）的文件夹
         dirs = os.listdir(TS_PATH)
         if dir_name not in dirs:
             os.makedirs(f"{TS_PATH}{dir_name}")
         ts_base_path = TS_PATH + dir_name
+        # 3.3 检查当前文件夹（日期）是否存在指定名称ts的文件夹
         exist_dirs = os.listdir(ts_base_path)
-        for item in m3u8_list:
+        # for item in m3u8_list:
+        """
+        m3u8_url = list(item.values())[0][0]
+        title = list(item.keys())[0]
+        m3u8_mark = m3u8_url.split("/")[-1]
+        file = f"{title}({m3u8_mark})"
+        ts_path = f"{ts_base_path}/{file}"
+        # 防止出现Connection reset异常
+        try:
+            if file in exist_dirs:
+                print(f"{file}已存在,检测ts数据资源中....")
+                self.get_ts_datas(m3u8_base_url=m3u8_url, ts_path=ts_path)
+                print(f"{file}数据检测完成...")
+                continue
+            os.mkdir(f'{ts_path}')
+            print(f"获取{file}文件资源中.....")
+            self.get_ts_datas(m3u8_base_url=m3u8_url, ts_path=ts_path)
+        except OSError:
+            print("该视频{}已经被下架...".format(file))
+        """
+
+        async def _handle_m3u8_item(item=None):
             m3u8_url = list(item.values())[0][0]
             title = list(item.keys())[0]
             m3u8_mark = m3u8_url.split("/")[-1]
@@ -736,26 +725,21 @@ class FindNewWorld:
             try:
                 if file in exist_dirs:
                     print(f"{file}已存在,检测ts数据资源中....")
-                    FindNewWorld().get_ts_datas(m3u8_base_url=m3u8_url, ts_path=ts_path)
+                    self.get_ts_datas(m3u8_base_url=m3u8_url, ts_path=ts_path)
                     print(f"{file}数据检测完成...")
-                    continue
-                os.mkdir(f'{ts_path}')
-                print(f"获取{file}文件资源中.....")
-                FindNewWorld().get_ts_datas(m3u8_base_url=m3u8_url, ts_path=ts_path)
+                else:
+                    os.mkdir(f'{ts_path}')
+                    print(f"获取{file}文件资源中.....")
+                    self.get_ts_datas(m3u8_base_url=m3u8_url, ts_path=ts_path)
             except OSError:
                 print("该视频{}已经被下架...".format(file))
 
-        # 根据m3u8列表获取ts文件待优化
-        # async def main(url_list, ts_path):
-        #     return await asyncio.gather(
-        #         *[_get_ts_data(url) for url in tqdm(url_list, desc="Downloading: ") if
-        #           url.split("/")[-1] not in os.listdir(ts_path)])
-        #
-        # loop = asyncio.get_event_loop()
-        # loop.run_until_complete(main(m3u8_urls, ts_path))
-        # self.get_ts_datas()
-        # print(len(m3u8_list))
-        # 3.获取ts数据列表
+        async def main_ts(m3u8_list=None):
+            return await asyncio.gather(*[_handle_m3u8_item(item) for item in m3u8_list])
+
+        # 异步批量处理m3u8地址
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(main_ts(m3u8_list))
 
     @Timer.timer
     def find_single_study_video(self, url, tittle):
@@ -853,8 +837,8 @@ class FindNewWorld:
             ts_path = './ts_data/'
         exist_ts = os.listdir(ts_path)
         retry_ts = set(exist_ts) ^ set(m3u8_files)
-        print(f"本次需要下载{len(retry_ts)}个ts文件，开始批量下载....")
-        logging.info(f"本次需要下载{len(retry_ts)}个ts文件，开始批量下载....")
+        print(f"本次还需要下载{len(retry_ts)}个ts文件，开始批量下载....")
+        logging.info(f"本次还需要下载{len(retry_ts)}个ts文件，开始批量下载....")
         m3u8_urls = [m3u8_obj.base_uri + ts for ts in retry_ts]
         while True:
             exist_ts = os.listdir(ts_path)
@@ -921,18 +905,7 @@ class FindNewWorld:
 
 
 # 调试
-# FindNewWorld().find_picture(url="https://www.pexels.com/zh-cn/search/people%20smiling/", num=10)
-# FindNewWorld().find_dy_video()
-FindNewWorld().find_study_videos(flag=1)
-# FindNewWorld().ts_datas_to_video(tittle="大文件")
-# FindNewWorld().get_ts_datas(m3u8_base_url="https://la.killcovid2021.com/m3u8/672577/672577.m3u8", time_out=240)
-# FindNewWorld().get_ts_datas(m3u8_base_url="https://la.killcovid2021.com/m3u8/669419/669419.m3u8",ts_path=" ./ts_data/452(673214.m3u8)")
-
-# url = "https://la.killcovid2021.com/m3u8/669419/669419.m3u8"
-# FindNewWorld().get_ts_datas(m3u8_base_url=url, time_out=60)
+FindNewWorld().find_study_videos(flag=2)
 
 # if __name__ == '__main__':
 #     pass
-
-# https://la2.killcovid2021.com/m3u8/673214/673214.m3u8
-# ./ts_data/452(673214.m3u8)

@@ -13,25 +13,30 @@
 import asyncio
 import json
 import re
-import threading
 import time
 import sys, os
 import random
-from ffmpy3 import FFmpeg
 
-sys.path.append(os.path.abspath(os.path.join(os.getcwd())).split('simple')[0])
+import urllib3
+from ffmpy3 import FFmpeg
+import asyncio
+import uvloop
 from utils.timer import Timer
 from utils.log import logging
 from simple import FindNewWorld
+import asyncio
+import uvloop
+from aiohttp import ClientSession
+import time
+from progressbar import *
+
+sys.path.append(os.path.abspath(os.path.join(os.getcwd())).split('simple')[0])
 
 
 def calculate():
     for i in range(50):
         print(f"我是第{i}个")
 
-
-import time
-from progressbar import *
 
 total = 100
 
@@ -118,37 +123,12 @@ print("耗时", time.time() - time_1)
 # print(results)
 # print("耗时", time.time() - time_1)
 
-import asyncio
-import uvloop
-from aiohttp import ClientSession
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
-
+urllib3.disable_warnings()
 url = "https://www.baidu.com/"
 
-# async def hello(i):
-#     async with ClientSession() as session:
-#         async with session.get(url+str(i)) as response:
-#             response = await response.read()
-#             print(response)
-#
-# def hello_1(i):
-#     rep = requests.get(url + str(i))
-#     print(rep.content)
-#
-# time_1 = time.time()
-# if __name__ == '__main__':
-# coroutine = [hello(i) for i in range(100)]
-# loop = asyncio.get_event_loop()
-# loop.run_until_complete(asyncio.gather(*coroutine))
-# for i in range(100):
-#     hello_1(i)
-# print("耗时", time.time() - time_1)
 
-
-# 方法一
-# 通过ffmpeg下载视频
-# todo 待优化
 def _download_by_ffmpeg():
     """
     通过ffmpeg下载视频
@@ -299,4 +279,25 @@ def _get_video_by_ts_data():
             print("该视频{}({})已经被下架...".format(k, v))
             # continue
 
-_get_video_by_ts_data()
+
+# todo 待处理key懒加载问题
+def _get_keys_in_page():
+    page_url = "https://0117.workarea2.live/index.php"
+    from selenium import webdriver
+    # 设置无痕模式
+    chrome_option = webdriver.ChromeOptions()
+    chrome_option.add_argument("--headless")
+    driver = webdriver.Chrome(chrome_options=chrome_option)
+    # 进入浏览器首页
+    driver.get(page_url)
+    # 处理懒加载问题
+    js = 'window.scrollTo(0, document.body.scrollHeight)'
+    driver.execute_script(js)
+    # print(driver.page_source)
+    keys = re.findall("viewkey=(.*?)&amp", driver.page_source)
+    print(set(keys))
+    print("\n")
+    print(len(list(set(keys))))
+
+# _get_video_by_ts_data()
+# _get_keys_in_page()

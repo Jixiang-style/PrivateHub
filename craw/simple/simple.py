@@ -17,7 +17,7 @@ import re
 import sys
 import time
 from io import BytesIO
-
+from constant import Constant
 import aiohttp
 import asyncio
 
@@ -34,9 +34,14 @@ import uvloop
 from aiohttp import ClientSession
 from urllib.parse import unquote
 from utils.timer import Timer
-from utils.log import logging
+from utils.log import logger
 
-asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+# 尝试处理嵌套循环事件
+import nest_asyncio
+
+nest_asyncio.apply()
+# nest_asyncio不能修复uvloop补丁
+# asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 urllib3.disable_warnings()
 
 sys.path.append(os.path.abspath(os.path.join(os.getcwd())).split('simple')[0])
@@ -161,19 +166,15 @@ class FindNewWorld:
     @Timer.timer
     def find_picture(self, url=None, num=None):
         # 爬取图片(例如：https://www.pexels.com/zh-cn/)
-        # 基础设置
-        SCROLL_HIGH = 2000  # 屏幕像素点
-        IMAGE_PATH = './picture/'
-        EXIST_IMAGES = set(os.listdir(IMAGE_PATH))
 
-        DOWNLOAD_LENGTH = num
+        download_length = num
         if num is None:
-            DOWNLOAD_LENGTH = 100  # 设置下载图片数量
+            download_length = 100  # 设置下载图片数量
         # 1.指定URL
         if url is None:
             url = "https://www.pexels.com/"
         message = f"需要下载{num}图片"
-        logging.info(message)
+        logger.info(message)
 
         browser = seldom.TestCase()
         # 隐藏window.navigator.webdriver 避免反爬机制，原博客：https://juejin.cn/post/6844904095749242887(该方法seldom已封装)
@@ -187,36 +188,36 @@ class FindNewWorld:
         # 设置浏览器无头模式
         browser.open(url)
         elements = browser.get_elements(xpath="//article")
-        # while len(elements) < DOWNLOAD_LENGTH:
+        # while len(elements) < download_length:
         # 如果页面展示图片数目小于目标数目，执行js下滑到页面底部
-        if len(elements) < DOWNLOAD_LENGTH:
-            browser.execute_script('window.scrollTo(0, {})'.format(SCROLL_HIGH))
-        for i in range(DOWNLOAD_LENGTH):
+        if len(elements) < download_length:
+            browser.execute_script('window.scrollTo(0, {})'.format(Constant.SCROLL_HIGH))
+        for i in range(download_length):
             path = browser.get_attribute(attribute="href", index=i,
                                          xpath="//article//ancestor::a[contains(@title,'下载')]")
             name = browser.get_attribute(attribute="alt", index=i, xpath="//article//ancestor::a//img")
             # title = f"./picture/{name}.jpg"
             name = "".join(re.findall(r'[\u4e00-\u9fa5]+', name))
             image = f"{name}.jpg"
-            title = IMAGE_PATH + image
-            if image in EXIST_IMAGES:
-                logging.info(f"图片{image}已存在无需重新下载")
+            title = Constant.IMAGE_PATH + image
+            if image in Constant.EXIST_IMAGES:
+                logger.info(f"图片{image}已存在无需重新下载")
                 break
 
             # 请求图片资源
             req = requests.get(url=path)
             if req.status_code != 200:
-                logging.error(f"下载{image}失败！status_code:{req.status_code}")
+                logger.error(f"下载{image}失败！status_code:{req.status_code}")
                 break
             with open(title, "ab+") as f:
                 f.write(req.content)
-                logging.info(f"下载{image}成功！URL：{path}")
+                logger.info(f"下载{image}成功！URL：{path}")
 
     # todo 需完善
     @Timer.timer
     def find_dy_video(self, url=None):
         # 基础配置
-        VIDEO_PATH = './dy_video/'
+        # VIDEO_PATH = './dy_video/'
 
         # 1.指定URL
         # 随机码
@@ -255,28 +256,26 @@ class FindNewWorld:
                 # 2. 发送请求
                 # 构建文件名
                 name = "".join(re.findall(r'[\u4e00-\u9fa5]+', item[1]))
-                name_dir = VIDEO_PATH + f"{name}.mp4"
+                name_dir = Constant.DY_VIDEO_PATH + f"{name}.mp4"
                 # 请求数据
                 req = requests.get(url=item[0])
                 start_time = time.time()
                 if req.status_code == 200:
-                    logging.info(f"开始下载{name}....")
+                    logger.info(f"开始下载{name}....")
                     # 持久化存储
                     with open(name_dir, "ab+") as f:
                         f.write(req.content)
                 else:
-                    logging.error(f"{name}下载失败....")
-                logging.info("耗时%.2f秒，%s下载完成！！！" % (start_time - time.time(), name))
+                    logger.error(f"{name}下载失败....")
+                logger.info("耗时%.2f秒，%s下载完成！！！" % (start_time - time.time(), name))
         else:
-            logging.error(f"请求视频列表数据异常....")
+            logger.error(f"请求视频列表数据异常....")
 
     @Timer.timer
     def find_study_videos(self, flag):
         # 抓取91学习视频
         # 设置视频存放路径
-        VIDEO_PATH = "./study_video/"
-        TS_PATH = "./ts_data/"
-        videos = os.listdir(VIDEO_PATH)
+        videos = os.listdir(Constant.FUN_VIDEO_PATH)
         # 如果连接访问不了，在这里把base_url替换成你知道的标准地址
         # base_url = 'http://f1020.workarea5.live/view_video.php?viewkey='
         base_url = 'https://0117.workarea2.live/view_video.php?viewkey='
@@ -332,7 +331,7 @@ class FindNewWorld:
             # 1.获取日志文件信息
             context = ""
             import json
-            with open("./craw.log", mode="r", encoding="utf-8") as fp1:
+            with open("./logs/infos/craw.log", mode="r", encoding="utf-8") as fp1:
                 for i in fp1.readlines():
                     context += i
             print(context)
@@ -360,12 +359,12 @@ class FindNewWorld:
 
             # todo 把m3u8地址写进json文件
             time_title = datetime.date.today()
-            with open("./m3u8.json", mode="r", encoding="utf-8") as fp1:
+            with open("./json_log/m3u8.json", mode="r", encoding="utf-8") as fp1:
                 old_data = json.load(fp1)
                 # old_data.append({str(time_title): m3u8_infos[0]})
                 # 把日志URL写进json文件
                 old_data.append({str(time_title): data})
-            with open("./m3u8.json", mode="w", encoding="utf-8") as fp2:
+            with open("./json_log/m3u8.json", mode="w", encoding="utf-8") as fp2:
                 # ensure_ascii=False设置防止中文乱码
                 json.dump(old_data, fp2, ensure_ascii=False)
 
@@ -382,7 +381,7 @@ class FindNewWorld:
             try:
                 get_page = requests.get(url=page_url, headers=headers, timeout=60, verify=False)
             except requests.exceptions.ConnectTimeout as e:
-                logging.error(f"获取首页信息超时：{e.strerror}")
+                logger.error(f"获取首页信息超时：{e.strerror}")
                 print(f"获取首页信息超时：{e.strerror}")
                 raise TimeoutError
             else:
@@ -393,17 +392,17 @@ class FindNewWorld:
                     view_keys = re.findall(r'viewkey=(.*?)&', str(get_page.content))
                     # 去重
                     view_keys = list(set(view_keys))
-                    logging.info(f"本次一共收集到{len(view_keys)}个学习视频...")
+                    logger.info(f"本次一共收集到{len(view_keys)}个学习视频...")
                     # 调试
                     print(f"本次一共收集到{len(view_keys)}个学习视频...")
 
                     for key in view_keys:
-                        logging.info('find:' + key)
+                        logger.info('find:' + key)
                         print('find:' + key)
                     return view_keys
 
                 else:
-                    logging.error(f"获取91首页内容失败，请检查91地址是否更新！")
+                    logger.error(f"获取91首页内容失败，请检查91地址是否更新！")
                     print("获取91首页内容失败，请检查91地址是否更新！")
 
         # 异步获取首页视频的m3u8列表
@@ -439,7 +438,7 @@ class FindNewWorld:
             for key in view_key_list:
                 # 获取m3u8信息
                 print(f"正在获取key为{key}的m3u8地址...")
-                logging.info(f"正在获取key为{key}的m3u8地址...")
+                logger.info(f"正在获取key为{key}的m3u8地址...")
                 m3u8_info = _get_m3u8_info(key)
                 print(m3u8_info)
                 for k, v in m3u8_info.items():
@@ -487,17 +486,17 @@ class FindNewWorld:
                 str_encode = re.findall(r'strencode2\(\"(.*?)\"\)', str(base_req.content))
                 m3u8_base_url = ""
                 if len(str_encode) >= 1:
-                    logging.info(f"m3u8地址为{unquote(str_encode[0])}")
+                    logger.info(f"m3u8地址为{unquote(str_encode[0])}")
                     print(f"key为{key}对应的m3u8地址为{unquote(str_encode[0])}")
                     m3u8_base_url = re.findall(r'src=(.*?) type', unquote(str_encode[0]))[0][1:-1]
                 else:
-                    logging.info(f"首次获取{key}对应的m3u8地址失败，正在重新获取...")
+                    logger.error(f"首次获取{key}对应的m3u8地址失败，正在重新获取...")
                     print(f"首次获取{key}对应的m3u8地址失败，正在重新获取...")
                 single_info = dict()
                 single_info[tittle] = m3u8_base_url, key
                 return single_info
             else:
-                logging.error(f"获取key:{key}视频内容信息失败!")
+                logger.error(f"获取key:{key}视频内容信息失败!")
                 print(f"获取key: {key}视频内容信息失败!")
 
         key_list = _get_keys()
@@ -542,11 +541,11 @@ class FindNewWorld:
                         str_encode = re.findall(r'strencode2\(\"(.*?)\"\)', str(response))
                         # m3u8_base_url = ""
                         if len(str_encode) >= 1:
-                            logging.info(f"m3u8地址为{unquote(str_encode[0])}")
+                            logger.info(f"m3u8地址为{unquote(str_encode[0])}")
                             print(f"key为{key}对应的m3u8地址为{unquote(str_encode[0])}")
                             m3u8_base_url = re.findall(r'src=(.*?) type', unquote(str_encode[0]))[0][1:-1]
                         else:
-                            logging.info(f"首次获取{key}对应的m3u8地址失败，正在重新获取...")
+                            logger.error(f"首次获取{key}对应的m3u8地址失败，正在重新获取...")
                             print(f"首次获取{key}对应的m3u8地址失败，正在重新获取...")
 
                         single_info = dict()
@@ -554,7 +553,7 @@ class FindNewWorld:
                         print(single_info)
                         return single_info
                     else:
-                        logging.error(f"获取key:{key}视频内容信息失败!")
+                        logger.error(f"获取key:{key}视频内容信息失败!")
                         print(f"获取key: {key}视频内容信息失败!")
 
         # todo 待调试
@@ -601,12 +600,12 @@ class FindNewWorld:
             m3u8_urls = [m3u8_obj.base_uri + ts for ts in m3u8_obj.files]
             # 设置视频路径待处理
             video_name = "{}.mp4".format(tittle)
-            video_path = VIDEO_PATH + video_name
+            video_path = Constant.FUN_VIDEO_PATH + video_name
             if video_name in videos:
-                logging.info(f"视频{video_name}已存在，无需重新下载")
+                logger.info(f"视频{video_name}已存在，无需重新下载")
                 print(f"视频{video_name}已存在，无需重新下载")
             # 开始拼接ts视频
-            logging.info(f"开始下载{tittle}....")
+            logger.info(f"开始下载{tittle}....")
             # 调试
             print(f"开始下载{tittle}....")
             time_start = time.time()
@@ -622,16 +621,16 @@ class FindNewWorld:
             ]
             bar = ProgressBar(widgets=widgets, maxval=10 * len(m3u8_urls))
             print(f"该视频解析出{len(m3u8_urls)}个ts文件")
-            logging.info(f"该视频解析出{len(m3u8_urls)}个ts文件")
+            logger.info(f"该视频解析出{len(m3u8_urls)}个ts文件")
             # 设置ts文件顺序
             index = 0
             for url in bar(m3u8_urls):
                 try:
                     ts_data = _get_ts_data(url=url, time_out=120)
-                    logging.info("正在获取第{}个ts文件....".format(index))
+                    logger.info("正在获取第{}个ts文件....".format(index))
                     print("正在获取第{}个ts文件....".format(index))
                 except TimeoutError as e:
-                    logging.error("获取第{}个ts数据异常".format(index))
+                    logger.error("获取第{}个ts数据异常".format(index))
                     print("获取第{}个ts数据异常".format(index))
                     break
                 else:
@@ -639,10 +638,10 @@ class FindNewWorld:
                         with open(video_path, "ab+") as fp:
                             fp.write(ts_data.content)
                     else:
-                        logging.info(f"下载{tittle}的ts数据时状态请求异常....")
+                        logger.error(f"下载{tittle}的ts数据时状态请求异常....")
                         print(f"下载{tittle}时状态请求异常....")
                 index += 1
-            logging.info("耗时%.2f秒，%s下载完成！！！" % (time.time() - time_start, tittle))
+            logger.info("耗时%.2f秒，%s下载完成！！！" % (time.time() - time_start, tittle))
             print("耗时%.2f秒，%s下载完成！！！" % (time.time() - time_start, tittle))
             """
             'https://la.killcovid2021.com/m3u8/667838/'
@@ -666,16 +665,16 @@ class FindNewWorld:
                 tittle = list(i.keys())[0]
                 m3u8_url = list(i.values())[0]
                 video_name = "{}.mp4".format(tittle)
-                video_path = VIDEO_PATH + video_name
+                video_path = Constant.FUN_VIDEO_PATH + video_name
                 if video_name in videos:
-                    logging.info(f"视频{video_name}已存在，无需重新下载")
+                    logger.info(f"视频{video_name}已存在，无需重新下载")
                     print(f"视频{video_name}已存在，无需重新下载")
                     break
                 from ffmpy3 import FFmpeg
                 FFmpeg(executable="/usr/local/bin/ffmpeg",
                        inputs={m3u8_url: None},
                        outputs={video_path: None}).run()
-                logging.info(f"视频{video_name}已存在已下载完成！！！")
+                logger.info(f"视频{video_name}已存在已下载完成！！！")
                 print(f"视频{video_name}已存在已下载完成！！！")
 
         # 2.获取m3u8信息列表
@@ -688,10 +687,10 @@ class FindNewWorld:
         # 3.1 创建当日文件夹（文件名为当前日期）
         dir_name = time.strftime("%Y-%m-%d", time.localtime())
         # 3.2 检查主文件夹下是否存在当前名称（日期）的文件夹
-        dirs = os.listdir(TS_PATH)
+        dirs = os.listdir(Constant.FUN_TS_PATH)
         if dir_name not in dirs:
-            os.makedirs(f"{TS_PATH}{dir_name}")
-        ts_base_path = TS_PATH + dir_name
+            os.makedirs(f"{Constant.FUN_TS_PATH}{dir_name}")
+        ts_base_path = Constant.FUN_TS_PATH + dir_name
         # 3.3 检查当前文件夹（日期）是否存在指定名称ts的文件夹
         exist_dirs = os.listdir(ts_base_path)
         # for item in m3u8_list:
@@ -738,6 +737,7 @@ class FindNewWorld:
             return await asyncio.gather(*[_handle_m3u8_item(item) for item in m3u8_list])
 
         # 异步批量处理m3u8地址
+        nest_asyncio.apply()
         loop = asyncio.get_event_loop()
         loop.run_until_complete(main_ts(m3u8_list))
 
@@ -745,35 +745,35 @@ class FindNewWorld:
     def find_single_study_video(self, url, tittle):
         # url 需要为m3u8_url
         # 设置视频存放路径
-        VIDEO_PATH = "./retry_video/"
-        videos = os.listdir(VIDEO_PATH)
+        # VIDEO_PATH = "./retry_video/"
+        # videos = os.listdir(Constant.FUN_RETRY_VIDEO_PATH)
 
         m3u8_obj = m3u8.load(url)
         m3u8_urls = [m3u8_obj.base_uri + ts for ts in m3u8_obj.files]
         # 设置视频路径待处理
         video_name = "{}.mp4".format(tittle)
-        video_path = VIDEO_PATH + video_name
+        video_path = Constant.FUN_RETRY_VIDEO_PATH + video_name
         # if video_name in videos:
-        #     logging.info(f"视频{video_name}已存在，无需重新下载")
+        #     logger.info(f"视频{video_name}已存在，无需重新下载")
         #     print(f"视频{video_name}已存在，无需重新下载")
         # 开始拼接ts视频
-        logging.info(f"开始下载{tittle}...")
+        logger.info(f"开始下载{tittle}...")
         # 调试
         print(f"开始下载{tittle}...")
         time_start = time.time()
         # 进度条展示
         print(f"该视频解析出{len(m3u8_urls)}个ts文件")
-        logging.info(f"该视频解析出{len(m3u8_urls)}个ts文件")
+        logger.info(f"该视频解析出{len(m3u8_urls)}个ts文件")
         # 设置ts文件顺序
         index = 0
         for ts_url in tqdm(m3u8_urls):
             try:
                 ts_data = requests.get(url=ts_url, timeout=120, verify=False)
 
-                logging.info("正在获取第{}个ts文件....".format(index))
+                logger.info("正在获取第{}个ts文件....".format(index))
                 print("正在获取第{}个ts文件....".format(index))
             except TimeoutError as e:
-                logging.error("获取第{}个ts数据异常".format(index))
+                logger.error("获取第{}个ts数据异常".format(index))
                 print("获取第{}个ts数据异常".format(index))
                 # ts_data = requests.get(url=url, timeout=120)
                 break
@@ -782,10 +782,10 @@ class FindNewWorld:
                     with open(video_path, "ab+") as fp:
                         fp.write(ts_data.content)
                 else:
-                    logging.info(f"下载{tittle}的ts数据时状态请求异常....")
+                    logger.error(f"下载{tittle}的ts数据时状态请求异常....")
                     print(f"下载{tittle}时状态请求异常....")
             index += 1
-        logging.info("耗时%.2f秒，%s下载完成！！！" % (time.time() - time_start, tittle))
+        logger.info("耗时%.2f秒，%s下载完成！！！" % (time.time() - time_start, tittle))
         print("耗时%.2f秒，%s下载完成！！！" % (time.time() - time_start, tittle))
 
     # 方法优化
@@ -801,12 +801,12 @@ class FindNewWorld:
         m3u8_urls = [m3u8_obj.base_uri + ts for ts in m3u8_obj.files]
         m3u8_files = [ts for ts in m3u8_obj.files]
         # 开始拼接ts视频
-        logging.info(f"开始下载{m3u8_base_url}...")
+        logger.info(f"开始下载{m3u8_base_url}...")
         # 调试
         print(f"开始下载{m3u8_base_url}...")
         # 进度条展示
         print(f"该视频解析出{len(m3u8_urls)}个ts文件")
-        logging.info(f"该视频解析出{len(m3u8_urls)}个ts文件")
+        logger.info(f"该视频解析出{len(m3u8_urls)}个ts文件")
 
         # 获取视频片段ts数据（异步协程）
         # 定义会话超时
@@ -815,30 +815,30 @@ class FindNewWorld:
         async def _get_ts_data(url):
             name = url.split("/")[-1]
             try:
-                logging.info("正在获取{}....".format(name))
+                # logger.info("正在获取{}....".format(name))
                 print("正在获取{}....".format(name))
                 async with ClientSession(timeout=timeout) as session:
                     async with session.get(url=url, timeout=timeout) as response:
                         status_code = response.status
                         response = await response.read()
             except ConnectionError or requests.exceptions.ProxyError or asyncio.exceptions.TimeoutError as e:
-                logging.error("获取{}数据异常：{}".format(name, e.strerror))
+                logger.error("获取{}数据异常：{}".format(name, e.strerror))
                 print("获取{}数据异常:{}".format(name, e.strerror))
             else:
                 if status_code == 200:
                     with open(ts_path + "/" + name, "wb+") as fp:
                         fp.write(response)
                 else:
-                    logging.info(f"下载{name}数据时状态请求异常....")
+                    logger.error(f"下载{name}数据时状态请求异常....")
                     print(f"下载{name}时状态请求异常....")
 
-        # 设置ts文件顺序
+        # 设置ts文件顺序（todo 待改进）
         if ts_path is None:
-            ts_path = './ts_data/'
+            ts_path = Constant.FUN_TS_PATH
         exist_ts = os.listdir(ts_path)
         retry_ts = set(exist_ts) ^ set(m3u8_files)
         print(f"本次还需要下载{len(retry_ts)}个ts文件，开始批量下载....")
-        logging.info(f"本次还需要下载{len(retry_ts)}个ts文件，开始批量下载....")
+        logger.info(f"本次还需要下载{len(retry_ts)}个ts文件，开始批量下载....")
         m3u8_urls = [m3u8_obj.base_uri + ts for ts in retry_ts]
         while True:
             exist_ts = os.listdir(ts_path)
@@ -856,27 +856,30 @@ class FindNewWorld:
 
             except ConnectionError or OSError or TimeoutError as e:
                 print(f"获取ts文件发生异常：{e.strerror}")
-                logging.info(f"获取ts文件发生异常：{e.strerror}")
+                logger.error(f"获取ts文件发生异常：{e.strerror}")
                 exist_ts = os.listdir(ts_path)
                 retry_ts = set(exist_ts) ^ set(m3u8_files)
                 if len(retry_ts) >= 1:
                     m3u8_urls = [m3u8_obj.base_uri + ts for ts in retry_ts]
                     print(f"本次需要下载{len(m3u8_urls)}个ts文件，开始批量下载....")
-                    logging.info(f"本次需要下载{len(m3u8_urls)}个ts文件，开始批量下载....")
+                    logger.info(f"本次需要下载{len(m3u8_urls)}个ts文件，开始批量下载....")
                 else:
                     return False
 
-    # 优化（待调试）
+    def pre_check(self):
+        # 检查本地已存在的ts文件夹
+        # 检查本地已存在的.mp4文件
+        pass
+
+    # todo 优化（待调试）
     @Timer.timer
-    def ts_datas_to_video(self, video_path=None, tittle=None):
+    def ts_data2video(self, video_path=None):
         # ts文件存放路径
-        path = './ts_data/'
+        path = Constant.FUN_TS_PATH
         if video_path is None:
-            video_path = './retry_video/'
-        if tittle is None:
-            tittle = '测试sf'
+            video_path = Constant.FUN_RETRY_VIDEO_PATH
         files = os.listdir(path)
-        # 遍历ts文件，删除空文件
+        # 遍历ts文件夹，删除空文件夹
         for file in files:
             tittle = file
             ts_path = path + file
